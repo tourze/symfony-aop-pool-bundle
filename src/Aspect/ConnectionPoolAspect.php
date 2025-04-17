@@ -13,10 +13,10 @@ use Symfony\Contracts\Service\ResetInterface;
 use Tourze\Symfony\Aop\Attribute\Aspect;
 use Tourze\Symfony\Aop\Attribute\Before;
 use Tourze\Symfony\Aop\Model\JoinPoint;
-use Tourze\Symfony\Aop\Service\ContextService;
 use Tourze\Symfony\Aop\Service\InstanceService;
 use Tourze\Symfony\AopPoolBundle\Attribute\ConnectionPool;
 use Tourze\Symfony\AopPoolBundle\Exception\StopWorkerException;
+use Tourze\Symfony\RuntimeContextBundle\Service\ContextServiceInterface;
 use Utopia\Pools\Connection;
 use Utopia\Pools\Pool;
 
@@ -42,7 +42,7 @@ class ConnectionPoolAspect implements EventSubscriberInterface, ResetInterface
     private array $connStartTimes = [];
 
     public function __construct(
-        private readonly ContextService $contextService,
+        private readonly ContextServiceInterface $contextService,
         private readonly InstanceService $instanceService,
         private readonly ?KernelInterface $kernel = null,
     ) {
