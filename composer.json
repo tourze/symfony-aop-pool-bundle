@@ -11,6 +11,7 @@
     "symfony/dependency-injection": "^6.4",
     "symfony/yaml": "^6.4 || ^7.1",
     "symfony/http-kernel": "^6.4",
+    "symfony/event-dispatcher": "^6.4",
     "symfony/framework-bundle": "^6.4",
     "symfony/service-contracts": "^2.5 || ^3",
     "tourze/symfony-aop-bundle": "0.0.*",
