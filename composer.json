@@ -5,13 +5,19 @@
   "license": "MIT",
   "require": {
     "php": "^8.1",
+    "ext-redis": "*",
+    "doctrine/dbal": "^3.7.0 || ^4.0",
+    "symfony/console": "^6.4",
     "symfony/config": "^6.4",
     "symfony/dependency-injection": "^6.4",
     "symfony/yaml": "^6.4 || ^7.1",
     "symfony/http-kernel": "^6.4",
     "symfony/framework-bundle": "^6.4",
+    "symfony/service-contracts": "^2.5 || ^3",
     "tourze/symfony-aop-bundle": "0.0.*",
-    "utopia-php/pools": "^0.5"
+    "tourze/backtrace-helper": "~0.0.5",
+    "utopia-php/pools": "^0.5",
+    "monolog/monolog": "^3.0"
   },
   "autoload": {
     "psr-4": {

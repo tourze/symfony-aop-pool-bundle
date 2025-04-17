@@ -261,7 +261,7 @@ class ConnectionPoolAspect implements EventSubscriberInterface, ResetInterface
 
         if ($connection->getResource() instanceof \Redis) {
             $startTime = $this->connStartTimes[$id] ?? null;
-            if ($startTime && (time() - $startTime) >= MINUTE_IN_SECONDS) {
+            if ($startTime && (time() - $startTime) >= 60) {
                 throw new \Exception("Redis对象过老，应销毁，创建时间为{$startTime}");
             }
 
@@ -281,7 +281,7 @@ class ConnectionPoolAspect implements EventSubscriberInterface, ResetInterface
 
         if ($connection->getResource() instanceof \Doctrine\DBAL\Connection) {
             $startTime = $this->connStartTimes[$id] ?? null;
-            if ($startTime && (time() - $startTime) >= MINUTE_IN_SECONDS) {
+            if ($startTime && (time() - $startTime) >= 60) {
                 throw new \Exception("PDO对象过老，应销毁，创建时间为{$startTime}");
             }
             if (!$startTime) {
