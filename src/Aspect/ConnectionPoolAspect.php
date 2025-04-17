@@ -216,7 +216,7 @@ class ConnectionPoolAspect implements EventSubscriberInterface, ResetInterface
 
     private function destroyConnection(Pool $pool, Connection $connection): void
     {
-        if ($connection->getResource() instanceof \Redis) {
+        if (class_exists(\Redis::class) && $connection->getResource() instanceof \Redis) {
             $redis = $connection->getResource();
             /* @var \Redis $redis */
             try {
@@ -259,7 +259,7 @@ class ConnectionPoolAspect implements EventSubscriberInterface, ResetInterface
 
         // 不同类型的资源，有不同的过期策略
 
-        if ($connection->getResource() instanceof \Redis) {
+        if (class_exists(\Redis::class) && $connection->getResource() instanceof \Redis) {
             $startTime = $this->connStartTimes[$id] ?? null;
             if ($startTime && (time() - $startTime) >= 60) {
                 throw new \Exception("Redis对象过老，应销毁，创建时间为{$startTime}");
