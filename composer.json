@@ -2,6 +2,7 @@
   "name": "tourze/aop-pool-bundle",
   "description": "AOP连接池",
   "type": "symfony-bundle",
+  "license": "MIT",
   "require": {
     "php": "^8.1",
     "symfony/config": "^6.4",
