@@ -1,142 +1,91 @@
 # AopPoolBundle
 
-AopPoolBundle 是一个基于 Symfony 的连接池实现，通过 AOP 技术实现对数据库连接、Redis 连接等资源的池化管理，主要用于提高资源利用率和系统性能。
+AopPoolBundle is a Symfony bundle for automatic connection pooling using AOP (Aspect-Oriented Programming). It provides efficient resource pooling for Redis, database, and custom services, improving performance and resource utilization.
 
-## 核心功能
+![version](https://img.shields.io/badge/version-0.0.1-blue.svg) ![license](https://img.shields.io/badge/license-MIT-green.svg)
 
-### 1. 连接池管理
-- 自动管理连接的生命周期
-- 支持连接的借出和归还
-- 智能的连接复用策略
-- 自动处理连接失效和重连
+## Features
 
-### 2. 内置连接池支持
-- Redis 连接池（支持 SncRedisBundle）
-- 数据库连接池（支持 Doctrine DBAL）
-- 支持通过注解添加自定义连接池
+- Automatic lifecycle management for connections (borrow/return)
+- Built-in Redis and Doctrine DBAL connection pools
+- Custom poolable services via `#[ConnectionPool]` attribute
+- Connection pool status monitoring, aging detection, and auto-destroy
+- Lazy initialization, auto-reconnect, retry, and resource recycling
+- Detailed logging and debug support
 
-### 3. 连接监控
-- 连接使用状态追踪
-- 连接老化检测
-- 自动销毁过期连接
-- 详细的日志记录
+## Installation
 
-### 4. 性能优化
-- 延迟连接初始化
-- 智能连接复用
-- 自动资源回收
-- 连接重试机制
+- Requires PHP 8.1+, Symfony 6.4+
+- Dependencies: `doctrine/dbal`, `snc/redis-bundle`, etc.
 
-## 配置参数
-
-在 `.env` 文件中可以配置以下参数：
-
-```dotenv
-# 连接池默认大小
-SERVICE_POOL_DEFAULT_SIZE=500
-
-# 调试模式（会记录详细日志）
-DEBUG_ConnectionPoolAspect=true
+```bash
+composer require tourze/symfony-aop-pool-bundle
 ```
 
-## 使用示例
+## Performance & Debugging Tips
 
-### 1. 标记连接池服务
+- Pool only necessary services, set pool size appropriately
+- Enable debug logs to monitor pool usage
+- Ensure connections are properly released
+
+## Quick Start
+
+### 1. Mark Custom Service for Pooling
 
 ```php
-use AopPoolBundle\Attribute\ConnectionPool;
+use Tourze\Symfony\AopPoolBundle\Attribute\ConnectionPool;
 
 #[ConnectionPool]
-class YourService
-{
+class YourService {
     private $connection;
-
-    public function doSomething()
-    {
-        // 连接会自动从连接池获取
+    public function doSomething() {
+        // Connection is automatically fetched from the pool
         $result = $this->connection->query(...);
         return $result;
     }
 }
 ```
 
-### 2. 使用 Redis 连接池
+### 2. Redis Connection Pool
 
-Redis 客户端会自动使用连接池，无需额外配置：
+Redis clients are automatically pooled, no extra configuration required:
 
 ```php
-class YourService
-{
-    public function __construct(
-        private \Redis $redis
-    ) {}
-    
-    public function doSomething()
-    {
-        // 连接会自动从连接池获取
+class YourService {
+    public function __construct(private \Redis $redis) {}
+    public function doSomething() {
         return $this->redis->get('key');
     }
 }
 ```
 
-### 3. 使用数据库连接池
+### 3. Database Connection Pool
 
-Doctrine DBAL 连接会自动使用连接池，无需额外配置：
+Doctrine DBAL connections are automatically pooled:
 
 ```php
 use Doctrine\DBAL\Connection;
-
-class YourService
-{
-    public function __construct(
-        private Connection $connection
-    ) {}
-    
-    public function doSomething()
-    {
-        // 连接会自动从连接池获取
+class YourService {
+    public function __construct(private Connection $connection) {}
+    public function doSomething() {
         return $this->connection->executeQuery('SELECT ...');
     }
 }
 ```
 
-## 自动池化的服务
+## Services Automatically Pooled
 
-以下服务会被自动池化：
+- All services tagged as `snc_redis.client`
+- All `doctrine.dbal.*_connection` services
+- All services with the `#[ConnectionPool]` attribute
 
-1. Redis 相关：
-   - 所有标记为 `snc_redis.client` 的服务
+## Notes & Limitations
 
-2. 数据库相关：
-   - 所有 `doctrine.dbal.*_connection` 服务
-
-3. 自定义服务：
-   - 所有使用 `#[ConnectionPool]` 注解标记的服务
-
-## 注意事项
-
-1. 连接管理
-   - 连接会在每个请求结束时自动归还到连接池
-   - 过期的连接会被自动销毁而不是归还
-   - 连接默认存活时间为 1 分钟
-   - 连接池大小默认为 500
-
-2. 性能考虑
-   - 只对需要池化的服务使用连接池
-   - 合理设置连接池大小
-   - 注意监控连接池使用情况
-
-3. 调试建议
-   - 开启 DEBUG_ConnectionPoolAspect 获取详细日志
-   - 监控连接池大小和使用率
-   - 注意检查连接是否正确释放
-
-4. 限制
-   - 连接重试最大次数等于连接池大小加1
-   - 不支持事务中的连接池切换
-   - 某些特殊服务可能不适合池化
-
-5. 错误处理
-   - 连接获取失败会抛出 StopWorkerException
-   - 连接过期会自动重试获取新连接
-   - 支持配置重连次数和重试间隔
+- Connections are automatically returned to the pool at the end of each request
+- Expired connections are destroyed (default TTL: 1 minute)
+- Default pool size: 500 (configurable)
+- Max retry attempts = pool size + 1
+- Pool switching in transactions is not supported
+- Some special services may not be suitable for pooling
+- StopWorkerException is thrown if connection fetch fails; automatic retry supported
+- Reconnect attempts and intervals are configurable
