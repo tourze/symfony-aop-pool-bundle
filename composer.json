@@ -18,7 +18,7 @@
     "tourze/backtrace-helper": "~0.0.5",
     "tourze/symfony-runtime-context-bundle": "0.0.*",
     "utopia-php/pools": "^0.5",
-    "monolog/monolog": "^3.0"
+    "monolog/monolog": "^3.1"
   },
   "autoload": {
     "psr-4": {
