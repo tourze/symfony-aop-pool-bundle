@@ -4,8 +4,6 @@ namespace Tourze\Symfony\AopPoolBundle\Aspect;
 
 use Monolog\Attribute\WithMonologChannel;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
-use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Contracts\Service\ResetInterface;
 use Tourze\Symfony\Aop\Attribute\Aspect;
 use Tourze\Symfony\Aop\Attribute\Before;
@@ -135,8 +133,7 @@ class ConnectionPoolAspect implements ResetInterface
     /**
      * 归还当前上下文的所有连接
      */
-    #[AsEventListener(event: KernelEvents::TERMINATE, priority: -10999)]
-    public function reset(): void
+    public function returnAll(): void
     {
         $contextId = $this->contextService->getId();
         $this->logger->debug('重置连接池上下文', [
@@ -148,41 +145,7 @@ class ConnectionPoolAspect implements ResetInterface
         }
 
         foreach ($this->borrowedConnections[$contextId] as $serviceId => $conn) {
-            $id = $this->lifecycleHandler->getConnectionId($conn);
-            try {
-                $pool = $this->poolManager->getPoolById($serviceId);
-
-                try {
-                    // 检查连接是否健康
-                    $this->lifecycleHandler->checkConnection($conn);
-
-                    // 归还连接
-                    $this->poolManager->returnConnection($serviceId, $pool, $conn);
-
-                    $this->logger->debug('归还连接', [
-                        'serviceId' => $serviceId,
-                        'contextId' => $contextId,
-                        'hash' => $id,
-                        'poolAvailable' => $pool->count(),
-                    ]);
-                } catch (\Throwable $exception) {
-                    // 连接不健康，直接销毁
-                    $this->logger->debug('连接不健康，销毁', [
-                        'serviceId' => $serviceId,
-                        'contextId' => $contextId,
-                        'hash' => $id,
-                        'error' => $exception->getMessage(),
-                    ]);
-
-                    $this->poolManager->destroyConnection($serviceId, $pool, $conn);
-                }
-            } catch (\Throwable $e) {
-                $this->logger->error('获取连接池失败', [
-                    'serviceId' => $serviceId,
-                    'contextId' => $contextId,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            $this->returnOne($contextId, $serviceId, $conn);
         }
 
         // 清理记录
@@ -190,6 +153,53 @@ class ConnectionPoolAspect implements ResetInterface
 
         // 定期清理连接池，避免资源泄漏
         $this->checkPoolHealth();
+    }
+
+    /**
+     * 归还单个服务
+     */
+    private function returnOne(string $contextId, string $serviceId, Connection $conn): void
+    {
+        $id = $this->lifecycleHandler->getConnectionId($conn);
+        try {
+            $pool = $this->poolManager->getPoolById($serviceId);
+
+            try {
+                // 检查连接是否健康
+                $this->lifecycleHandler->checkConnection($conn);
+
+                // 归还连接
+                $this->poolManager->returnConnection($serviceId, $pool, $conn);
+
+                $this->logger->debug('归还连接', [
+                    'serviceId' => $serviceId,
+                    'contextId' => $contextId,
+                    'hash' => $id,
+                    'poolAvailable' => $pool->count(),
+                ]);
+            } catch (\Throwable $exception) {
+                // 连接不健康，直接销毁
+                $this->logger->debug('连接不健康，销毁', [
+                    'serviceId' => $serviceId,
+                    'contextId' => $contextId,
+                    'hash' => $id,
+                    'error' => $exception->getMessage(),
+                ]);
+
+                $this->poolManager->destroyConnection($serviceId, $pool, $conn);
+            }
+        } catch (\Throwable $e) {
+            $this->logger->error('获取连接池失败', [
+                'serviceId' => $serviceId,
+                'contextId' => $contextId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function reset(): void
+    {
+        $this->returnAll();
     }
 
     /**

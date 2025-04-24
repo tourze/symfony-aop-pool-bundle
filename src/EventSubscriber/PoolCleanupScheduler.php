@@ -4,9 +4,13 @@ namespace Tourze\Symfony\AopPoolBundle\EventSubscriber;
 
 use Monolog\Attribute\WithMonologChannel;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Console\ConsoleEvents;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\Messenger\Event\WorkerMessageFailedEvent;
+use Symfony\Component\Messenger\Event\WorkerMessageHandledEvent;
+use Tourze\Symfony\AopPoolBundle\Aspect\ConnectionPoolAspect;
 use Tourze\Symfony\AopPoolBundle\Service\ConnectionPoolManager;
 
 /**
@@ -29,9 +33,19 @@ class PoolCleanupScheduler
     public function __construct(
         private readonly ConnectionPoolManager $poolManager,
         private readonly LoggerInterface $logger,
+        private readonly ConnectionPoolAspect $poolAspect,
         #[Autowire('%kernel.debug%')] private readonly bool $debug = false,
     ) {
         $this->interval = intval($_ENV['SERVICE_POOL_CLEANUP_INTERVAL'] ?? 60);
+    }
+
+    #[AsEventListener(event: WorkerMessageFailedEvent::class, priority: -10999)]
+    #[AsEventListener(event: WorkerMessageHandledEvent::class, priority: -10999)]
+    #[AsEventListener(event: ConsoleEvents::TERMINATE, priority: -10999)]
+    #[AsEventListener(event: KernelEvents::TERMINATE, priority: -10999)]
+    public function returnAll(): void
+    {
+        $this->poolAspect->returnAll();
     }
 
     /**

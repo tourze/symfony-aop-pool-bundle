@@ -5,6 +5,7 @@ namespace Tourze\Symfony\AopPoolBundle\Tests\EventSubscriber;
 use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use Tourze\Symfony\AopPoolBundle\Aspect\ConnectionPoolAspect;
 use Tourze\Symfony\AopPoolBundle\EventSubscriber\PoolCleanupScheduler;
 use Tourze\Symfony\AopPoolBundle\Service\ConnectionPoolManager;
 
@@ -13,6 +14,7 @@ class PoolCleanupSchedulerTest extends TestCase
     private PoolCleanupScheduler $scheduler;
     private ConnectionPoolManager $poolManager;
     private LoggerInterface $logger;
+    private ConnectionPoolAspect $poolAspect;
 
     protected function setUp(): void
     {
@@ -21,6 +23,7 @@ class PoolCleanupSchedulerTest extends TestCase
         // 模拟依赖
         $this->poolManager = $this->createMock(ConnectionPoolManager::class);
         $this->logger = $this->createMock(Logger::class);
+        $this->poolAspect = $this->createMock(ConnectionPoolAspect::class);
 
         // 设置环境变量
         $_ENV['SERVICE_POOL_CLEANUP_INTERVAL'] = '10';
@@ -29,6 +32,7 @@ class PoolCleanupSchedulerTest extends TestCase
         $this->scheduler = new PoolCleanupScheduler(
             $this->poolManager,
             $this->logger,
+            $this->poolAspect,
             true // debug mode
         );
     }
@@ -63,10 +67,11 @@ class PoolCleanupSchedulerTest extends TestCase
         // 创建新的模拟对象
         $poolManager = $this->createMock(ConnectionPoolManager::class);
         $logger = $this->createMock(LoggerInterface::class);
+        $poolAspect = $this->createMock(ConnectionPoolAspect::class);
 
         // 创建一个新的调度器，与原始调度器共享上次运行时间
         $scheduler = new \ReflectionClass(PoolCleanupScheduler::class);
-        $newScheduler = $scheduler->newInstance($poolManager, $logger, true);
+        $newScheduler = $scheduler->newInstance($poolManager, $logger, $poolAspect, true);
 
         // 复制上次运行时间
         $lastRunTime = $this->getLastRunTime($this->scheduler);
@@ -88,10 +93,11 @@ class PoolCleanupSchedulerTest extends TestCase
         // 创建新的模拟对象
         $poolManager = $this->createMock(ConnectionPoolManager::class);
         $logger = $this->createMock(LoggerInterface::class);
+        $poolAspect = $this->createMock(ConnectionPoolAspect::class);
 
         // 创建一个新的调度器，与原始调度器共享上次运行时间
         $scheduler = new \ReflectionClass(PoolCleanupScheduler::class);
-        $newScheduler = $scheduler->newInstance($poolManager, $logger, true);
+        $newScheduler = $scheduler->newInstance($poolManager, $logger, $poolAspect, true);
 
         // 修改上次运行时间为20秒前（超过间隔）
         $this->setLastRunTime($newScheduler, time() - 20);
@@ -136,7 +142,8 @@ class PoolCleanupSchedulerTest extends TestCase
         // 创建新的实例（不使用环境变量）
         $poolManager = $this->createMock(ConnectionPoolManager::class);
         $logger = $this->createMock(LoggerInterface::class);
-        $scheduler = new PoolCleanupScheduler($poolManager, $logger, false);
+        $poolAspect = $this->createMock(ConnectionPoolAspect::class);
+        $scheduler = new PoolCleanupScheduler($poolManager, $logger, $poolAspect, false);
 
         // 获取间隔属性
         $reflection = new \ReflectionProperty($scheduler, 'interval');
@@ -155,7 +162,8 @@ class PoolCleanupSchedulerTest extends TestCase
         // 创建一个非调试模式的调度器
         $poolManager = $this->createMock(ConnectionPoolManager::class);
         $logger = $this->createMock(LoggerInterface::class);
-        $scheduler = new PoolCleanupScheduler($poolManager, $logger, false);
+        $poolAspect = $this->createMock(ConnectionPoolAspect::class);
+        $scheduler = new PoolCleanupScheduler($poolManager, $logger, $poolAspect, false);
 
         // 预期cleanup会被调用
         $poolManager->expects($this->once())
