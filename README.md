@@ -1,8 +1,11 @@
 # AopPoolBundle
 
-AopPoolBundle is a Symfony bundle for automatic connection pooling using AOP (Aspect-Oriented Programming). It provides efficient resource pooling for Redis, database, and custom services, improving performance and resource utilization.
+[English](README.md) | [中文](README.zh-CN.md)
 
-![version](https://img.shields.io/badge/version-0.0.1-blue.svg) ![license](https://img.shields.io/badge/license-MIT-green.svg)
+[![Latest Version](https://img.shields.io/packagist/v/tourze/symfony-aop-pool-bundle.svg?style=flat-square)](https://packagist.org/packages/tourze/symfony-aop-pool-bundle)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+AopPoolBundle is a Symfony bundle for automatic connection pooling using AOP (Aspect-Oriented Programming). It provides efficient resource pooling for Redis, database, and custom services, improving performance and resource utilization.
 
 ## Features
 
@@ -22,12 +25,6 @@ AopPoolBundle is a Symfony bundle for automatic connection pooling using AOP (As
 ```bash
 composer require tourze/symfony-aop-pool-bundle
 ```
-
-## Performance & Debugging Tips
-
-- Pool only necessary services, set pool size appropriately
-- Enable debug logs to monitor pool usage
-- Ensure connections are properly released
 
 ## Quick Start
 
@@ -80,6 +77,24 @@ class YourService {
 - All `doctrine.dbal.*_connection` services
 - All services with the `#[ConnectionPool]` attribute
 
+## Configuration
+
+Add the following to your `.env` if you need to customize:
+
+```dotenv
+SERVICE_POOL_DEFAULT_SIZE=500
+SERVICE_POOL_CLEANUP_INTERVAL=60
+SERVICE_POOL_CONNECTION_LIFETIME=60
+SERVICE_POOL_CHECK_REDIS_CONNECTION=0
+DEBUG_ConnectionPoolAspect=true
+```
+
+## Performance & Debugging Tips
+
+- Pool only necessary services, set pool size appropriately
+- Enable debug logs to monitor pool usage
+- Ensure connections are properly released
+
 ## Notes & Limitations
 
 - Connections are automatically returned to the pool at the end of each request
@@ -91,3 +106,17 @@ class YourService {
 - StopWorkerException is thrown if connection fetch fails; automatic retry supported
 - Reconnect attempts and intervals are configurable
 - Works well in both short-lived (FPM) and long-lived (Workerman) process environments
+
+## Contribution
+
+- Please use Issues for bug reports and feature requests
+- Pull Requests are welcome; ensure tests and code style pass
+- Follow PSR standards
+
+## License
+
+MIT License © Tourze
+
+## Changelog
+
+See [CHANGELOG.md] if available.

@@ -1,8 +1,11 @@
 # AopPoolBundle
 
-AopPoolBundle 是一个基于 Symfony 的 AOP 连接池扩展，旨在为 Redis、数据库等资源提供高效的池化管理。通过 AOP 技术自动拦截并池化服务，提升系统性能和资源利用率。
+[English](README.md) | [中文](README.zh-CN.md)
 
-![version](https://img.shields.io/badge/version-0.0.1-blue.svg) ![license](https://img.shields.io/badge/license-MIT-green.svg)
+[![Latest Version](https://img.shields.io/packagist/v/tourze/symfony-aop-pool-bundle.svg?style=flat-square)](https://packagist.org/packages/tourze/symfony-aop-pool-bundle)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+AopPoolBundle 是一个基于 Symfony 的 AOP 连接池扩展，旨在为 Redis、数据库等资源提供高效的池化管理。通过 AOP 技术自动拦截并池化服务，提升系统性能和资源利用率。
 
 ## 主要特性
 
@@ -80,8 +83,17 @@ class YourService {
 
 ```dotenv
 SERVICE_POOL_DEFAULT_SIZE=500
+SERVICE_POOL_CLEANUP_INTERVAL=60
+SERVICE_POOL_CONNECTION_LIFETIME=60
+SERVICE_POOL_CHECK_REDIS_CONNECTION=0
 DEBUG_ConnectionPoolAspect=true
 ```
+
+## 性能与调试建议
+
+- 仅池化必要服务，合理设置池大小
+- 开启调试日志监控池使用率
+- 检查连接是否正确释放
 
 ## 注意事项
 
@@ -95,17 +107,11 @@ DEBUG_ConnectionPoolAspect=true
 - 支持重连次数与间隔配置
 - 在短生命周期(FPM)和长生命周期(Workerman)进程环境下都能良好工作
 
-## 性能与调试建议
-
-- 仅池化必要服务，合理设置池大小
-- 开启调试日志监控池使用率
-- 检查连接是否正确释放
-
 ## 贡献指南
 
-1. 通过 Issue 反馈问题
-2. 提交 PR 前请确保通过测试与代码规范
-3. 遵循 PSR 标准
+- 通过 Issue 反馈问题
+- 提交 PR 前请确保通过测试与代码规范
+- 遵循 PSR 标准
 
 ## 版权许可
 
