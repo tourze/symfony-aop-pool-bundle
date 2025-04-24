@@ -6,8 +6,6 @@ services:
 
   Tourze\Symfony\AopPoolBundle\Aspect\:
     resource: '../../Aspect/'
-  Tourze\Symfony\AopPoolBundle\Command\:
-    resource: '../../Command/'
   Tourze\Symfony\AopPoolBundle\EventSubscriber\:
     resource: '../../EventSubscriber/'
   Tourze\Symfony\AopPoolBundle\Service\:
