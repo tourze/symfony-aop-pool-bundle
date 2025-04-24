@@ -4,6 +4,7 @@ namespace Tourze\Symfony\AopPoolBundle\Tests\EventSubscriber;
 
 use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 use Tourze\Symfony\AopPoolBundle\EventSubscriber\PoolCleanupScheduler;
 use Tourze\Symfony\AopPoolBundle\Service\ConnectionPoolManager;
 
@@ -11,7 +12,7 @@ class PoolCleanupSchedulerTest extends TestCase
 {
     private PoolCleanupScheduler $scheduler;
     private ConnectionPoolManager $poolManager;
-    private Logger $logger;
+    private LoggerInterface $logger;
 
     protected function setUp(): void
     {
@@ -61,7 +62,7 @@ class PoolCleanupSchedulerTest extends TestCase
 
         // 创建新的模拟对象
         $poolManager = $this->createMock(ConnectionPoolManager::class);
-        $logger = $this->createMock(Logger::class);
+        $logger = $this->createMock(LoggerInterface::class);
 
         // 创建一个新的调度器，与原始调度器共享上次运行时间
         $scheduler = new \ReflectionClass(PoolCleanupScheduler::class);
@@ -86,7 +87,7 @@ class PoolCleanupSchedulerTest extends TestCase
 
         // 创建新的模拟对象
         $poolManager = $this->createMock(ConnectionPoolManager::class);
-        $logger = $this->createMock(Logger::class);
+        $logger = $this->createMock(LoggerInterface::class);
 
         // 创建一个新的调度器，与原始调度器共享上次运行时间
         $scheduler = new \ReflectionClass(PoolCleanupScheduler::class);
@@ -125,6 +126,47 @@ class PoolCleanupSchedulerTest extends TestCase
 
         // 调用调度方法
         $this->scheduler->scheduleCleanup();
+    }
+
+    public function testDefaultCleanupInterval(): void
+    {
+        // 清除环境变量
+        unset($_ENV['SERVICE_POOL_CLEANUP_INTERVAL']);
+        
+        // 创建新的实例（不使用环境变量）
+        $poolManager = $this->createMock(ConnectionPoolManager::class);
+        $logger = $this->createMock(LoggerInterface::class);
+        $scheduler = new PoolCleanupScheduler($poolManager, $logger, false);
+        
+        // 获取间隔属性
+        $reflection = new \ReflectionProperty($scheduler, 'interval');
+        $reflection->setAccessible(true);
+        $interval = $reflection->getValue($scheduler);
+        
+        // 验证默认间隔为60秒
+        $this->assertEquals(60, $interval);
+        
+        // 重新设置环境变量以供后续测试使用
+        $_ENV['SERVICE_POOL_CLEANUP_INTERVAL'] = '10';
+    }
+    
+    public function testDebugModeDisabled(): void
+    {
+        // 创建一个非调试模式的调度器
+        $poolManager = $this->createMock(ConnectionPoolManager::class);
+        $logger = $this->createMock(LoggerInterface::class);
+        $scheduler = new PoolCleanupScheduler($poolManager, $logger, false);
+        
+        // 预期cleanup会被调用
+        $poolManager->expects($this->once())
+            ->method('cleanup');
+            
+        // 预期不会记录info日志（因为调试模式关闭）
+        $logger->expects($this->never())
+            ->method('info');
+            
+        // 调用调度方法
+        $scheduler->scheduleCleanup();
     }
 
     /**

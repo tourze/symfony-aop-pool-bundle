@@ -10,11 +10,3 @@ services:
     resource: '../../EventSubscriber/'
   Tourze\Symfony\AopPoolBundle\Service\:
     resource: '../../Service/'
-
-  # 专用日志通道
-  monolog.logger.connection_pool:
-    parent: monolog.logger_prototype
-    arguments:
-      $channel: 'connection_pool'
-    calls:
-      - [useLoggingLoopDetection, [false]]  # 防止日志循环记录

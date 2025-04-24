@@ -2,8 +2,8 @@
 
 namespace Tourze\Symfony\AopPoolBundle\Aspect;
 
-use Monolog\Logger;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Monolog\Attribute\WithMonologChannel;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Contracts\Service\ResetInterface;
@@ -22,6 +22,7 @@ use Utopia\Pools\Connection;
  * 直接替换instance对象实现连接池化
  */
 #[Aspect]
+#[WithMonologChannel('connection_pool')]
 class ConnectionPoolAspect implements ResetInterface
 {
     /**
@@ -33,7 +34,7 @@ class ConnectionPoolAspect implements ResetInterface
         private readonly ConnectionPoolManager $poolManager,
         private readonly ConnectionLifecycleHandler $lifecycleHandler,
         private readonly ContextServiceInterface $contextService,
-        #[Autowire(service: 'monolog.logger.connection_pool')] private readonly Logger $logger,
+        private readonly LoggerInterface $logger,
     ) {
     }
 

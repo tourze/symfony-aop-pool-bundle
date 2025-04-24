@@ -2,7 +2,8 @@
 
 namespace Tourze\Symfony\AopPoolBundle\EventSubscriber;
 
-use Monolog\Logger;
+use Monolog\Attribute\WithMonologChannel;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\KernelEvents;
@@ -12,6 +13,7 @@ use Tourze\Symfony\AopPoolBundle\Service\ConnectionPoolManager;
  * 连接池定期清理任务
  * 定期执行连接池清理以回收资源
  */
+#[WithMonologChannel('connection_pool')]
 class PoolCleanupScheduler
 {
     /**
@@ -26,7 +28,7 @@ class PoolCleanupScheduler
 
     public function __construct(
         private readonly ConnectionPoolManager $poolManager,
-        #[Autowire(service: 'monolog.logger.connection_pool')] private readonly Logger $logger,
+        private readonly LoggerInterface $logger,
         #[Autowire('%kernel.debug%')] private readonly bool $debug = false,
     ) {
         $this->interval = intval($_ENV['SERVICE_POOL_CLEANUP_INTERVAL'] ?? 60);

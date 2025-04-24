@@ -2,9 +2,9 @@
 
 namespace Tourze\Symfony\AopPoolBundle\Service;
 
-use Monolog\Logger;
+use Monolog\Attribute\WithMonologChannel;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Contracts\Service\ResetInterface;
 use Tourze\Symfony\Aop\Model\JoinPoint;
 use Tourze\Symfony\Aop\Service\InstanceService;
@@ -16,6 +16,7 @@ use Utopia\Pools\Pool;
  * 负责创建、获取和维护连接池
  */
 #[Autoconfigure(public: true)]
+#[WithMonologChannel('connection_pool')]
 class ConnectionPoolManager implements ResetInterface
 {
     /**
@@ -30,7 +31,7 @@ class ConnectionPoolManager implements ResetInterface
 
     public function __construct(
         private readonly InstanceService $instanceService,
-        #[Autowire(service: 'monolog.logger.connection_pool')] private readonly Logger $logger,
+        private readonly LoggerInterface $logger,
     ) {
     }
 

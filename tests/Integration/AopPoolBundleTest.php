@@ -38,10 +38,6 @@ class AopPoolBundleTest extends TestCase
 
     private function registerMockServices(): void
     {
-        // 注册依赖服务 - 直接使用实例而不是定义
-        $logger = new \Monolog\Logger('connection_pool');
-        $this->container->set('monolog.logger.connection_pool', $logger);
-
         $instanceService = $this->createMock(InstanceService::class);
         $this->container->set(InstanceService::class, $instanceService);
 
@@ -59,9 +55,21 @@ class AopPoolBundleTest extends TestCase
         $this->assertInstanceOf(AopPoolBundle::class, $this->bundle);
 
         // 验证关键服务存在
-        $this->assertTrue($this->container->has('monolog.logger.connection_pool'));
         $this->assertTrue($this->container->has(InstanceService::class));
         $this->assertTrue($this->container->has(ContextServiceInterface::class));
+    }
+
+    public function testBundleName(): void
+    {
+        // 验证Bundle的名称
+        $this->assertEquals('AopPoolBundle', $this->bundle->getName());
+    }
+
+    public function testBundlePath(): void
+    {
+        // 验证Bundle的路径
+        $expectedPath = dirname((new \ReflectionClass(AopPoolBundle::class))->getFileName());
+        $this->assertEquals($expectedPath, $this->bundle->getPath());
     }
 
     public function testAspectRegistration(): void
