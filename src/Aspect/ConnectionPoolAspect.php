@@ -2,55 +2,39 @@
 
 namespace Tourze\Symfony\AopPoolBundle\Aspect;
 
-use Monolog\Handler\StreamHandler;
-use Monolog\Level;
 use Monolog\Logger;
-use Symfony\Component\Console\ConsoleEvents;
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\KernelEvents;
-use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Contracts\Service\ResetInterface;
 use Tourze\Symfony\Aop\Attribute\Aspect;
 use Tourze\Symfony\Aop\Attribute\Before;
 use Tourze\Symfony\Aop\Model\JoinPoint;
-use Tourze\Symfony\Aop\Service\InstanceService;
 use Tourze\Symfony\AopPoolBundle\Attribute\ConnectionPool;
 use Tourze\Symfony\AopPoolBundle\Exception\StopWorkerException;
+use Tourze\Symfony\AopPoolBundle\Service\ConnectionLifecycleHandler;
+use Tourze\Symfony\AopPoolBundle\Service\ConnectionPoolManager;
 use Tourze\Symfony\RuntimeContextBundle\Service\ContextServiceInterface;
 use Utopia\Pools\Connection;
-use Utopia\Pools\Pool;
 
 /**
  * 连接池的拦截实现
- * 如果需要拦截，那我们直接替换instance对象
+ * 直接替换instance对象实现连接池化
  */
 #[Aspect]
-class ConnectionPoolAspect implements EventSubscriberInterface, ResetInterface
+class ConnectionPoolAspect implements ResetInterface
 {
     /**
-     * @var array|Pool[]
+     * @var Connection[][] 按上下文和服务ID跟踪借出的连接
      */
-    private static array $pools = [];
-
-    /**
-     * @var Connection[][] 记录所有借出去的对象
-     */
-    private array $borrowed = [];
-
-    private Logger $logger;
-
-    private array $connStartTimes = [];
+    private array $borrowedConnections = [];
 
     public function __construct(
+        private readonly ConnectionPoolManager $poolManager,
+        private readonly ConnectionLifecycleHandler $lifecycleHandler,
         private readonly ContextServiceInterface $contextService,
-        private readonly InstanceService $instanceService,
-        private readonly ?KernelInterface $kernel = null,
+        #[Autowire(service: 'monolog.logger.connection_pool')] private readonly Logger $logger,
     ) {
-        $this->logger = new Logger('ConnectionPoolAspect');
-        $this->logger->useLoggingLoopDetection(false);
-        if (($_ENV['DEBUG_ConnectionPoolAspect'] ?? false) && null !== $this->kernel) {
-            $this->logger->pushHandler(new StreamHandler($this->kernel->getCacheDir() . '/ConnectionPoolAspect.log', Level::Debug));
-        }
     }
 
     /**
@@ -59,14 +43,13 @@ class ConnectionPoolAspect implements EventSubscriberInterface, ResetInterface
     #[Before(serviceTags: ['snc_redis.client'])]
     public function redis(JoinPoint $joinPoint): void
     {
-        // ProxyManager代理Redis对象时，不知道为毛总是可能发生某个地方调用了__destruct
-        // 我们只能先在这里做一次特殊处理
+        // ProxyManager代理Redis对象时可能会调用__destruct，需特殊处理
         if ('__destruct' === $joinPoint->getMethod()) {
             $joinPoint->setReturnEarly(true);
             $joinPoint->setReturnValue(null);
-
             return;
         }
+
         $this->pool($joinPoint);
     }
 
@@ -77,218 +60,153 @@ class ConnectionPoolAspect implements EventSubscriberInterface, ResetInterface
     #[Before(classAttribute: ConnectionPool::class)]
     public function pool(JoinPoint $joinPoint): void
     {
-        // 以 service 为单位来创建 pool
+        // 以service为单位创建pool
         $serviceId = $joinPoint->getInternalServiceId();
-
-        if (!isset(static::$pools[$serviceId])) {
-            $pool = new Pool(
-                $serviceId,
-                $this->getPoolMaxSize(),
-                function () use ($joinPoint) {
-                    return $this->instanceService->create($joinPoint);
-                },
-            );
-
-            // 重连3次，间隔1s
-            $pool->setReconnectAttempts(3);
-            $pool->setReconnectSleep(1);
-
-            // 重试3次，间隔1s
-            $pool->setRetryAttempts(3);
-            $pool->setReconnectSleep(1);
-
-            static::$pools[$serviceId] = $pool;
-            $this->logger->debug('创建连接池', ['serviceId' => $serviceId]);
-        }
-
-        // 替换instance
         $contextId = $this->contextService->getId();
-        if (!isset($this->borrowed[$contextId])) {
-            $this->borrowed[$contextId] = [];
+
+        // 检查当前上下文是否已有借出的连接
+        if (isset($this->borrowedConnections[$contextId][$serviceId])) {
+            // 已借出过该服务的连接，直接复用
+            $connection = $this->borrowedConnections[$contextId][$serviceId];
+            $joinPoint->setInstance($connection->getResource());
+            return;
         }
 
-        $pool = static::$pools[$serviceId];
+        // 获取连接池
+        $pool = $this->poolManager->getPool($serviceId, $joinPoint);
 
-        // 在极端情况下，我们整个连接池都塞满了对象，同时所有对象都已经过期，那下面就会出现获取不到对象的情形
-        // 为了更合理获取，我们这里设置为连接池最大数量+1，那样子起码最后一次能获取成功吧
-        $retryAttempts = $this->getPoolMaxSize() + 1;
+        // 重试获取连接
+        $retryAttempts = $this->getRetryAttempts();
         $errorList = [];
 
-        while (!isset($this->borrowed[$contextId][$serviceId]) && $retryAttempts > 0) {
-            $conn = $pool->pop();
-            $id = $this->getObjectId($conn);
-            $this->logger->debug('借出连接', [
-                'serviceId' => $serviceId,
-                'contextId' => $contextId,
-                'tryTimes' => $retryAttempts,
-                'hash' => $id,
-                'count' => $pool->count(),
-            ]);
-
-            // 记录初始化对象时间
-            if (!isset($this->connStartTimes[$id])) {
-                $this->connStartTimes[$id] = time();
-            }
-
-            // echo "借出{$serviceId}: " . spl_object_hash($conn). ", 剩余" . static::$pools[$serviceId]->count() . "\n";
-            // var_dump($contextId, $serviceId, spl_object_hash($conn->getResource()));
-            // 循环直到可以借到一个不老的连接
+        while ($retryAttempts > 0) {
             try {
-                $this->checkConnection($conn);
-            } catch (\Throwable $exception) {
-                $errorList[] = $exception->getMessage();
-                $this->logger->warning('连接过老，主动丢弃', [
+                // 从池中借出连接
+                $connection = $this->poolManager->borrowConnection($serviceId, $pool);
+
+                // 检查连接健康状态
+                $this->lifecycleHandler->registerConnection($connection);
+                $this->lifecycleHandler->checkConnection($connection);
+
+                // 记录借出状态
+                if (!isset($this->borrowedConnections[$contextId])) {
+                    $this->borrowedConnections[$contextId] = [];
+                }
+                $this->borrowedConnections[$contextId][$serviceId] = $connection;
+
+                // 记录借出日志
+                $connectionId = $this->lifecycleHandler->getConnectionId($connection);
+                $this->logger->info('借出连接', [
                     'serviceId' => $serviceId,
                     'contextId' => $contextId,
-                    'hash' => $id,
+                    'hash' => $connectionId,
+                    'poolAvailable' => $pool->count(),
                 ]);
-                $this->destroyConnection($pool, $conn);
+
+                // 设置替换实例
+                $joinPoint->setInstance($connection->getResource());
+                return;
+            } catch (\Throwable $exception) {
+                $errorList[] = $exception->getMessage();
+                $this->logger->warning('获取连接失败，重试', [
+                    'serviceId' => $serviceId,
+                    'error' => $exception->getMessage(),
+                    'remainingAttempts' => $retryAttempts - 1,
+                ]);
                 --$retryAttempts;
-                continue;
             }
-
-            $this->borrowed[$contextId][$serviceId] = $conn;
         }
 
-        if (!isset($this->borrowed[$contextId][$serviceId])) {
-            throw new StopWorkerException('服务获取失败：' . $serviceId, context: ['serviceId' => $serviceId, 'contextId' => $contextId, 'retryAttempts' => $retryAttempts, 'errorList' => $errorList]);
-        }
-
-        $joinPoint->setInstance($this->borrowed[$contextId][$serviceId]->getResource());
-    }
-
-    public static function getSubscribedEvents(): array
-    {
-        return [
-            KernelEvents::TERMINATE => ['reset', -10999],
-            ConsoleEvents::TERMINATE => ['reset', -1024],
+        // 所有重试都失败了，抛出异常
+        $errorContext = [
+            'serviceId' => $serviceId,
+            'contextId' => $contextId,
+            'currentBorrowedConnections' => count($this->borrowedConnections[$contextId] ?? []),
+            'totalContexts' => count($this->borrowedConnections),
         ];
+
+        throw new StopWorkerException(
+            '服务获取失败：' . $serviceId, 
+            context: array_merge($errorContext, ['errorList' => $errorList])
+        );
     }
 
+    /**
+     * 归还当前上下文的所有连接
+     */
+    #[AsEventListener(event: KernelEvents::TERMINATE, priority: -10999)]
     public function reset(): void
     {
-        $this->logger->reset();
-
         $contextId = $this->contextService->getId();
         $this->logger->debug('重置连接池上下文', [
             'contextId' => $contextId,
         ]);
 
-        foreach ($this->borrowed[$contextId] ?? [] as $serviceId => $conn) {
-            $pool = static::$pools[$serviceId];
-            $errorList = [];
+        if (!isset($this->borrowedConnections[$contextId])) {
+            return;
+        }
 
+        foreach ($this->borrowedConnections[$contextId] as $serviceId => $conn) {
+            $id = $this->lifecycleHandler->getConnectionId($conn);
             try {
-                $this->checkConnection($conn);
-            } catch (\Throwable $exception) {
-                $errorList[] = $exception->getMessage();
+                $pool = $this->poolManager->getPoolById($serviceId);
 
-                // 如果太老，就不还了，直接销毁
-                $this->logger->debug('连接过老，不归还直接丢弃', [
+                try {
+                    // 检查连接是否健康
+                    $this->lifecycleHandler->checkConnection($conn);
+
+                    // 归还连接
+                    $this->poolManager->returnConnection($serviceId, $pool, $conn);
+
+                    $this->logger->debug('归还连接', [
+                        'serviceId' => $serviceId,
+                        'contextId' => $contextId,
+                        'hash' => $id,
+                        'poolAvailable' => $pool->count(),
+                    ]);
+                } catch (\Throwable $exception) {
+                    // 连接不健康，直接销毁
+                    $this->logger->debug('连接不健康，销毁', [
+                        'serviceId' => $serviceId,
+                        'contextId' => $contextId,
+                        'hash' => $id,
+                        'error' => $exception->getMessage(),
+                    ]);
+
+                    $this->poolManager->destroyConnection($serviceId, $pool, $conn);
+                }
+            } catch (\Throwable $e) {
+                $this->logger->error('获取连接池失败', [
                     'serviceId' => $serviceId,
                     'contextId' => $contextId,
-                    'hash' => $this->getObjectId($conn),
+                    'error' => $e->getMessage(),
                 ]);
-                $this->destroyConnection($pool, $conn);
-                continue;
-            }
-
-            // 还回去
-            $this->logger->debug('归还连接', [
-                'serviceId' => $serviceId,
-                'contextId' => $contextId,
-                'hash' => $this->getObjectId($conn),
-                'errorList' => $errorList,
-                'count' => $pool->count(),
-            ]);
-            $pool->push($conn);
-        }
-        unset($this->borrowed[$contextId]);
-        // TODO 过期的服务，我们要想个办法清除
-        // echo memory_get_peak_usage() / 1024 / 1024;
-        // echo "M\n";
-    }
-
-    private function getPoolMaxSize(): int
-    {
-        return intval($_ENV['SERVICE_POOL_DEFAULT_SIZE'] ?? 500);
-    }
-
-    private function destroyConnection(Pool $pool, Connection $connection): void
-    {
-        if (class_exists(\Redis::class) && $connection->getResource() instanceof \Redis) {
-            $redis = $connection->getResource();
-            /* @var \Redis $redis */
-            try {
-                $redis->close();
-            } catch (\Throwable) {
-            }
-        }
-        if ($connection->getResource() instanceof \Doctrine\DBAL\Connection) {
-            $dbal = $connection->getResource();
-            /* @var \Doctrine\DBAL\Connection $dbal */
-            try {
-                $dbal->close();
-            } catch (\Throwable) {
             }
         }
 
-        // 最后注销
-        $id = $this->getObjectId($connection);
-        unset($this->connStartTimes[$id]);
-        $pool->destroy($connection);
+        // 清理记录
+        unset($this->borrowedConnections[$contextId]);
+
+        // 定期清理连接池，避免资源泄漏
+        $this->checkPoolHealth();
     }
 
     /**
-     * 获取对象的唯一ID
-     * 要注意的是，如果一个对象被销毁了，那这里返回的id可能重复
-     *
-     * @see https://www.php.net/manual/zh/function.spl-object-hash.php
+     * 定期检查并清理池中超时的连接
      */
-    private function getObjectId(object $object): string
+    private function checkPoolHealth(): void
     {
-        return spl_object_hash($object);
+        // 每100次请求随机触发一次连接池清理
+        if (mt_rand(1, 100) === 1) {
+            $this->poolManager->cleanup();
+        }
     }
 
     /**
-     * 连接老化判断
+     * 获取重试次数
      */
-    private function checkConnection(Connection $connection): void
+    private function getRetryAttempts(): int
     {
-        $id = $this->getObjectId($connection);
-
-        // 不同类型的资源，有不同的过期策略
-
-        if (class_exists(\Redis::class) && $connection->getResource() instanceof \Redis) {
-            $startTime = $this->connStartTimes[$id] ?? null;
-            if ($startTime && (time() - $startTime) >= 60) {
-                throw new \Exception("Redis对象过老，应销毁，创建时间为{$startTime}");
-            }
-
-            //            $redis = $conn->getResource();
-            //            /** @var \Redis $redis */
-            //            try {
-            //                $redis->ping();
-            //                $redis->clearLastError(); // 清理上次错误信息，让连接正常
-            //            } catch (\Throwable) {
-            //                return true;
-            //            }
-
-            if (!$startTime) {
-                $this->connStartTimes[$id] = time();
-            }
-        }
-
-        if ($connection->getResource() instanceof \Doctrine\DBAL\Connection) {
-            $startTime = $this->connStartTimes[$id] ?? null;
-            if ($startTime && (time() - $startTime) >= 60) {
-                throw new \Exception("PDO对象过老，应销毁，创建时间为{$startTime}");
-            }
-            if (!$startTime) {
-                $this->connStartTimes[$id] = time();
-            }
-        }
-
-        // 其他的我们不处理
+        return intval($_ENV['SERVICE_POOL_GET_RETRY_ATTEMPTS'] ?? 5);
     }
 }

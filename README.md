@@ -9,9 +9,10 @@ AopPoolBundle is a Symfony bundle for automatic connection pooling using AOP (As
 - Automatic lifecycle management for connections (borrow/return)
 - Built-in Redis and Doctrine DBAL connection pools
 - Custom poolable services via `#[ConnectionPool]` attribute
-- Connection pool status monitoring, aging detection, and auto-destroy
-- Lazy initialization, auto-reconnect, retry, and resource recycling
+- Connection health checks and resource recycling
+- Lazy initialization, auto-reconnect, and retry support
 - Detailed logging and debug support
+- Compatible with FPM and Workerman environments
 
 ## Installation
 
@@ -82,10 +83,11 @@ class YourService {
 ## Notes & Limitations
 
 - Connections are automatically returned to the pool at the end of each request
-- Expired connections are destroyed (default TTL: 1 minute)
+- Pool health checks regularly recycle a small portion of connections to prevent resource exhaustion
 - Default pool size: 500 (configurable)
 - Max retry attempts = pool size + 1
 - Pool switching in transactions is not supported
 - Some special services may not be suitable for pooling
 - StopWorkerException is thrown if connection fetch fails; automatic retry supported
 - Reconnect attempts and intervals are configurable
+- Works well in both short-lived (FPM) and long-lived (Workerman) process environments
