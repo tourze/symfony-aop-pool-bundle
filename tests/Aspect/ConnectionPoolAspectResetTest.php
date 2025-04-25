@@ -68,9 +68,9 @@ class ConnectionPoolAspectResetTest extends TestCase
         // 设置上下文ID
         $this->contextService->expects($this->any())->method('getId')->willReturn('test-context');
 
-        // 期望 logger->debug 方法会被调用
+        // 期望 logger->info 方法会被调用
         $this->logger->expects($this->once())
-            ->method('debug')
+            ->method('info')
             ->with('重置连接池上下文', ['contextId' => 'test-context']);
 
         // 调用 reset 方法

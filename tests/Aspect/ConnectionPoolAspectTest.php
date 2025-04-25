@@ -132,7 +132,7 @@ class ConnectionPoolAspectTest extends TestCase
 
         // 期望 logger->debug 方法会被调用
         $this->logger->expects($this->once())
-            ->method('debug')
+            ->method('info')
             ->with('重置连接池上下文', ['contextId' => 'test-context']);
 
         // 调用 reset 方法
