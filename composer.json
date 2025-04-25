@@ -32,9 +32,6 @@
     "phpstan/phpstan": "^2.1",
     "maglnet/composer-require-checker": "^4"
   },
-  "scripts": {
-    "phpstan": "phpstan analyse src -l 1"
-  },
   "autoload-dev": {
     "psr-4": {
       "Tourze\\Symfony\\AopPoolBundle\\Tests\\": "tests"
