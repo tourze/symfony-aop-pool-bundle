@@ -6,6 +6,7 @@ use Monolog\Attribute\WithMonologChannel;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Contracts\Service\ResetInterface;
+use Tourze\BacktraceHelper\ExceptionPrinter;
 use Tourze\Symfony\Aop\Model\JoinPoint;
 use Tourze\Symfony\Aop\Service\InstanceService;
 use Utopia\Pools\Connection;
@@ -173,7 +174,7 @@ class ConnectionPoolManager implements ResetInterface
         } catch (\Throwable $e) {
             $this->logger->warning('连接池清理异常', [
                 'serviceId' => $serviceId,
-                'error' => $e->getMessage(),
+                'error' => ExceptionPrinter::exception($e),
             ]);
         }
     }

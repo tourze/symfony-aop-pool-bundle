@@ -136,7 +136,7 @@ class ConnectionPoolAspect implements ResetInterface
     public function returnAll(): void
     {
         $contextId = $this->contextService->getId();
-        $this->logger->debug('重置连接池上下文', [
+        $this->logger->info('重置连接池上下文', [
             'contextId' => $contextId,
         ]);
 
@@ -171,7 +171,7 @@ class ConnectionPoolAspect implements ResetInterface
                 // 归还连接
                 $this->poolManager->returnConnection($serviceId, $pool, $conn);
 
-                $this->logger->debug('归还连接', [
+                $this->logger->info('归还连接', [
                     'serviceId' => $serviceId,
                     'contextId' => $contextId,
                     'hash' => $id,
@@ -179,7 +179,7 @@ class ConnectionPoolAspect implements ResetInterface
                 ]);
             } catch (\Throwable $exception) {
                 // 连接不健康，直接销毁
-                $this->logger->debug('连接不健康，销毁', [
+                $this->logger->warning('连接不健康，销毁', [
                     'serviceId' => $serviceId,
                     'contextId' => $contextId,
                     'hash' => $id,
