@@ -128,7 +128,7 @@ class ConnectionLifecycleHandlerTest extends TestCase
         $connection->method('getResource')->willReturn($redis);
 
         // 启用Redis连接检查
-        $_ENV['SERVICE_POOL_CHECK_REDIS_CONNECTION'] = true;
+        $_ENV['SERVICE_POOL_CHECK_REDIS_CONNECTION'] = 'true';
 
         // 模拟ping成功
         $redis->expects($this->once())
@@ -154,7 +154,7 @@ class ConnectionLifecycleHandlerTest extends TestCase
         $connection->method('getResource')->willReturn($redis);
 
         // 启用Redis连接检查
-        $_ENV['SERVICE_POOL_CHECK_REDIS_CONNECTION'] = true;
+        $_ENV['SERVICE_POOL_CHECK_REDIS_CONNECTION'] = 'true';
 
         // 模拟ping失败
         $redis->expects($this->once())
@@ -196,7 +196,7 @@ class ConnectionLifecycleHandlerTest extends TestCase
         $connection->method('getResource')->willReturn($dbal);
 
         // 启用数据库连接检查
-        $_ENV['SERVICE_POOL_CHECK_DB_CONNECTION'] = true;
+        $_ENV['SERVICE_POOL_CHECK_DB_CONNECTION'] = 'true';
 
         // 模拟查询成功
         $dbal->expects($this->once())
@@ -223,7 +223,7 @@ class ConnectionLifecycleHandlerTest extends TestCase
         $connection->method('getResource')->willReturn($dbal);
 
         // 启用数据库连接检查
-        $_ENV['SERVICE_POOL_CHECK_DB_CONNECTION'] = true;
+        $_ENV['SERVICE_POOL_CHECK_DB_CONNECTION'] = 'true';
 
         // 模拟查询失败
         $dbal->expects($this->once())

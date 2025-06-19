@@ -74,7 +74,7 @@ class ConnectionLifecycleHandler
     private function checkRedisConnection(\Redis $redis, int $startTime): void
     {
         // 选择性激活：可以通过环境变量开启实际的ping检查
-        if ($_ENV['SERVICE_POOL_CHECK_REDIS_CONNECTION'] ?? false) {
+        if (($_ENV['SERVICE_POOL_CHECK_REDIS_CONNECTION'] ?? false) === 'true' || ($_ENV['SERVICE_POOL_CHECK_REDIS_CONNECTION'] ?? false) === '1') {
             try {
                 $redis->ping();
                 // 清理可能的错误状态
@@ -91,7 +91,7 @@ class ConnectionLifecycleHandler
     private function checkDatabaseConnection(\Doctrine\DBAL\Connection $connection, int $startTime): void
     {
         // 选择性激活：通过环境变量开启实际的连接检查
-        if ($_ENV['SERVICE_POOL_CHECK_DB_CONNECTION'] ?? false) {
+        if (($_ENV['SERVICE_POOL_CHECK_DB_CONNECTION'] ?? false) === 'true' || ($_ENV['SERVICE_POOL_CHECK_DB_CONNECTION'] ?? false) === '1') {
             try {
                 // 简单ping检查，不同DBAL版本可能API不同，尝试最通用的方式
                 $connection->executeQuery('SELECT 1')->fetchOne();
