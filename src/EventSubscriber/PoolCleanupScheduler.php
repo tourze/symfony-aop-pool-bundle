@@ -17,7 +17,7 @@ use Tourze\Symfony\AopPoolBundle\Service\ConnectionPoolManager;
  * 连接池定期清理任务
  * 定期执行连接池清理以回收资源
  */
-#[WithMonologChannel('connection_pool')]
+#[WithMonologChannel(channel: 'connection_pool')]
 class PoolCleanupScheduler
 {
     /**
@@ -34,7 +34,7 @@ class PoolCleanupScheduler
         private readonly ConnectionPoolManager $poolManager,
         private readonly LoggerInterface $logger,
         private readonly ConnectionPoolAspect $poolAspect,
-        #[Autowire('%kernel.debug%')] private readonly bool $debug = false,
+        #[Autowire(value: '%kernel.debug%')] private readonly bool $debug = false,
     ) {
         $this->interval = intval($_ENV['SERVICE_POOL_CLEANUP_INTERVAL'] ?? 60);
     }

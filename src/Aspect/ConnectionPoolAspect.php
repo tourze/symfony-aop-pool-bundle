@@ -20,7 +20,7 @@ use Utopia\Pools\Connection;
  * 直接替换instance对象实现连接池化
  */
 #[Aspect]
-#[WithMonologChannel('connection_pool')]
+#[WithMonologChannel(channel: 'connection_pool')]
 class ConnectionPoolAspect implements ResetInterface
 {
     /**

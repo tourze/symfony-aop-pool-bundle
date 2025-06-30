@@ -8,6 +8,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Contracts\Service\ResetInterface;
 use Tourze\BacktraceHelper\ExceptionPrinter;
 use Tourze\Symfony\Aop\Model\JoinPoint;
+use Tourze\Symfony\AopPoolBundle\Exception\PoolNotFoundException;
 use Tourze\Symfony\Aop\Service\InstanceService;
 use Utopia\Pools\Connection;
 use Utopia\Pools\Pool;
@@ -17,7 +18,7 @@ use Utopia\Pools\Pool;
  * 负责创建、获取和维护连接池
  */
 #[Autoconfigure(public: true)]
-#[WithMonologChannel('connection_pool')]
+#[WithMonologChannel(channel: 'connection_pool')]
 class ConnectionPoolManager implements ResetInterface
 {
     /**
@@ -312,12 +313,12 @@ class ConnectionPoolManager implements ResetInterface
      * 根据服务ID获取连接池
      * 如果连接池不存在，抛出异常
      *
-     * @throws \RuntimeException 如果找不到指定的连接池
+     * @throws PoolNotFoundException 如果找不到指定的连接池
      */
     public function getPoolById(string $serviceId): Pool
     {
         if (!isset($this->pools[$serviceId])) {
-            throw new \RuntimeException("找不到服务ID为 {$serviceId} 的连接池");
+            throw new PoolNotFoundException("找不到服务ID为 {$serviceId} 的连接池");
         }
 
         return $this->pools[$serviceId];

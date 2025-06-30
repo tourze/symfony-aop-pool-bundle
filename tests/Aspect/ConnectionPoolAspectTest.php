@@ -6,6 +6,7 @@ use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 use Tourze\Symfony\Aop\Model\JoinPoint;
 use Tourze\Symfony\AopPoolBundle\Aspect\ConnectionPoolAspect;
+use Tourze\Symfony\AopPoolBundle\Exception\ConnectionUnhealthyException;
 use Tourze\Symfony\AopPoolBundle\Service\ConnectionLifecycleHandler;
 use Tourze\Symfony\AopPoolBundle\Service\ConnectionPoolManager;
 use Tourze\Symfony\RuntimeContextBundle\Service\ContextServiceInterface;
@@ -104,25 +105,59 @@ class ConnectionPoolAspectTest extends TestCase
         // 创建 JoinPoint Mock
         $joinPoint = $this->createMock(JoinPoint::class);
         $joinPoint->expects($this->any())->method('getMethod')->willReturn('get');
+        
+        // 设置服务ID
+        $serviceId = 'test.service';
+        $joinPoint->expects($this->any())->method('getInternalServiceId')->willReturn($serviceId);
+        
+        // 设置上下文ID
+        $contextId = 'test-context';
+        $this->contextService->expects($this->any())->method('getId')->willReturn($contextId);
 
-        // 创建一个带间谍的测试对象
-        $aspectSpy = $this->getMockBuilder(ConnectionPoolAspect::class)
-            ->setConstructorArgs([
-                $this->poolManager,
-                $this->lifecycleHandler,
-                $this->contextService,
-                $this->logger
-            ])
-            ->onlyMethods(['pool'])
-            ->getMock();
-
-        // 期望 pool 方法会被调用一次
-        $aspectSpy->expects($this->once())
-            ->method('pool')
-            ->with($joinPoint);
+        // 创建 Pool Mock
+        $pool = $this->createMock(Pool::class);
+        $pool->expects($this->any())->method('count')->willReturn(10);
+        
+        // 创建 Connection Mock
+        $connection = $this->createMock(Connection::class);
+        $resource = $this->createMock(\Redis::class);
+        $connection->expects($this->any())->method('getResource')->willReturn($resource);
+        
+        // 期望 getPool 会被调用
+        $this->poolManager->expects($this->once())
+            ->method('getPool')
+            ->with($serviceId, $joinPoint)
+            ->willReturn($pool);
+            
+        // 期望 borrowConnection 会被调用
+        $this->poolManager->expects($this->once())
+            ->method('borrowConnection')
+            ->with($serviceId, $pool)
+            ->willReturn($connection);
+            
+        // 期望 registerConnection 会被调用
+        $this->lifecycleHandler->expects($this->once())
+            ->method('registerConnection')
+            ->with($connection);
+            
+        // 期望 checkConnection 会被调用
+        $this->lifecycleHandler->expects($this->once())
+            ->method('checkConnection')
+            ->with($connection);
+            
+        // 期望 getConnectionId 会被调用
+        $this->lifecycleHandler->expects($this->once())
+            ->method('getConnectionId')
+            ->with($connection)
+            ->willReturn('connection-id');
+            
+        // 期望 setInstance 会被调用
+        $joinPoint->expects($this->once())
+            ->method('setInstance')
+            ->with($resource);
 
         // 调用 redis 方法
-        $aspectSpy->redis($joinPoint);
+        $this->aspect->redis($joinPoint);
     }
 
     public function testResetWithNoBorrowedConnections(): void
@@ -221,7 +256,7 @@ class ConnectionPoolAspectTest extends TestCase
         $this->lifecycleHandler->expects($this->once())
             ->method('checkConnection')
             ->with($connection)
-            ->willThrowException(new \Exception('连接不健康'));
+            ->willThrowException(new ConnectionUnhealthyException('连接不健康'));
 
         // 期望 destroyConnection 会被调用
         $this->poolManager->expects($this->once())

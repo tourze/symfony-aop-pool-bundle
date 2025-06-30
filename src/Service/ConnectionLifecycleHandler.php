@@ -2,6 +2,8 @@
 
 namespace Tourze\Symfony\AopPoolBundle\Service;
 
+use Tourze\Symfony\AopPoolBundle\Exception\ConnectionExpiredException;
+use Tourze\Symfony\AopPoolBundle\Exception\ConnectionUnhealthyException;
 use Utopia\Pools\Connection;
 
 /**
@@ -40,7 +42,7 @@ class ConnectionLifecycleHandler
     /**
      * 检查连接是否健康/过期
      *
-     * @throws \Exception 当连接过期或不健康时抛出
+     * @throws ConnectionExpiredException|ConnectionUnhealthyException 当连接过期或不健康时抛出
      */
     public function checkConnection(Connection $connection): void
     {
@@ -57,7 +59,7 @@ class ConnectionLifecycleHandler
         // 检查连接是否过期
         $age = time() - $startTime;
         if ($age >= $this->connectionLifetime) {
-            throw new \Exception("连接已过期，创建时间为{$startTime}，当前已使用{$age}秒");
+            throw new ConnectionExpiredException("连接已过期，创建时间为{$startTime}，当前已使用{$age}秒");
         }
 
         // 根据资源类型执行特定的健康检查
@@ -80,7 +82,7 @@ class ConnectionLifecycleHandler
                 // 清理可能的错误状态
                 $redis->clearLastError();
             } catch (\Throwable $e) {
-                throw new \Exception("Redis连接不健康: " . $e->getMessage());
+                throw new ConnectionUnhealthyException("Redis连接不健康: " . $e->getMessage());
             }
         }
     }
@@ -96,7 +98,7 @@ class ConnectionLifecycleHandler
                 // 简单ping检查，不同DBAL版本可能API不同，尝试最通用的方式
                 $connection->executeQuery('SELECT 1')->fetchOne();
             } catch (\Throwable $e) {
-                throw new \Exception("数据库连接不健康: " . $e->getMessage());
+                throw new ConnectionUnhealthyException("数据库连接不健康: " . $e->getMessage());
             }
         }
     }
