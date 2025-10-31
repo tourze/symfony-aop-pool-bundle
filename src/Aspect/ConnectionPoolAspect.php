@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tourze\Symfony\AopPoolBundle\Aspect;
 
 use Monolog\Attribute\WithMonologChannel;
@@ -9,6 +11,7 @@ use Tourze\Symfony\Aop\Attribute\Aspect;
 use Tourze\Symfony\Aop\Attribute\Before;
 use Tourze\Symfony\Aop\Model\JoinPoint;
 use Tourze\Symfony\AopPoolBundle\Attribute\ConnectionPool;
+use Tourze\Symfony\AopPoolBundle\Exception\ServiceIdNotFoundException;
 use Tourze\Symfony\AopPoolBundle\Exception\StopWorkerException;
 use Tourze\Symfony\AopPoolBundle\Service\ConnectionLifecycleHandler;
 use Tourze\Symfony\AopPoolBundle\Service\ConnectionPoolManager;
@@ -24,7 +27,7 @@ use Utopia\Pools\Connection;
 class ConnectionPoolAspect implements ResetInterface
 {
     /**
-     * @var Connection[][] 按上下文和服务ID跟踪借出的连接
+     * @var array<string, array<string, Connection<mixed>>> 按上下文和服务ID跟踪借出的连接
      */
     private array $borrowedConnections = [];
 
@@ -46,6 +49,7 @@ class ConnectionPoolAspect implements ResetInterface
         if ('__destruct' === $joinPoint->getMethod()) {
             $joinPoint->setReturnEarly(true);
             $joinPoint->setReturnValue(null);
+
             return;
         }
 
@@ -61,6 +65,10 @@ class ConnectionPoolAspect implements ResetInterface
     {
         // 以service为单位创建pool
         $serviceId = $joinPoint->getInternalServiceId();
+        if (null === $serviceId) {
+            throw new ServiceIdNotFoundException('无法获取服务ID');
+        }
+
         $contextId = $this->contextService->getId();
 
         // 检查当前上下文是否已有借出的连接
@@ -68,6 +76,7 @@ class ConnectionPoolAspect implements ResetInterface
             // 已借出过该服务的连接，直接复用
             $connection = $this->borrowedConnections[$contextId][$serviceId];
             $joinPoint->setInstance($connection->getResource());
+
             return;
         }
 
@@ -104,6 +113,7 @@ class ConnectionPoolAspect implements ResetInterface
 
                 // 设置替换实例
                 $joinPoint->setInstance($connection->getResource());
+
                 return;
             } catch (\Throwable $exception) {
                 $errorList[] = $exception->getMessage();
@@ -124,10 +134,7 @@ class ConnectionPoolAspect implements ResetInterface
             'totalContexts' => count($this->borrowedConnections),
         ];
 
-        throw new StopWorkerException(
-            '服务获取失败：' . $serviceId, 
-            context: array_merge($errorContext, ['errorList' => $errorList])
-        );
+        throw new StopWorkerException('服务获取失败：' . $serviceId, context: array_merge($errorContext, ['errorList' => $errorList]));
     }
 
     /**
@@ -157,6 +164,9 @@ class ConnectionPoolAspect implements ResetInterface
 
     /**
      * 归还单个服务
+     */
+    /**
+     * @param Connection<mixed> $conn
      */
     private function returnOne(string $contextId, string $serviceId, Connection $conn): void
     {
@@ -208,7 +218,7 @@ class ConnectionPoolAspect implements ResetInterface
     private function checkPoolHealth(): void
     {
         // 每100次请求随机触发一次连接池清理
-        if (mt_rand(1, 100) === 1) {
+        if (1 === mt_rand(1, 100)) {
             $this->poolManager->cleanup();
         }
     }

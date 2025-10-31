@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tourze\Symfony\AopPoolBundle\Exception;
 
 use Tourze\BacktraceHelper\ContextAwareTrait;

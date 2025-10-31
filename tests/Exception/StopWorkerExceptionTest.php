@@ -2,27 +2,32 @@
 
 namespace Tourze\Symfony\AopPoolBundle\Tests\Exception;
 
-use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\CoversClass;
 use Tourze\BacktraceHelper\ContextAwareTrait;
+use Tourze\PHPUnitBase\AbstractExceptionTestCase;
 use Tourze\Symfony\AopPoolBundle\Exception\StopWorkerException;
 
-class StopWorkerExceptionTest extends TestCase
+/**
+ * @internal
+ */
+#[CoversClass(StopWorkerException::class)]
+final class StopWorkerExceptionTest extends AbstractExceptionTestCase
 {
     public function testExceptionWithContext(): void
     {
         $context = ['serviceId' => 'test.service', 'contextId' => 'test-context'];
         $exception = new StopWorkerException('Test exception', 0, null, $context);
 
-        $this->assertEquals('Test exception', $exception->getMessage());
-        $this->assertEquals($context, $exception->getContext());
+        self::assertEquals('Test exception', $exception->getMessage());
+        self::assertEquals($context, $exception->getContext());
     }
 
     public function testExceptionWithoutContext(): void
     {
         $exception = new StopWorkerException('Test exception without context');
 
-        $this->assertEquals('Test exception without context', $exception->getMessage());
-        $this->assertEquals([], $exception->getContext());
+        self::assertEquals('Test exception without context', $exception->getMessage());
+        self::assertEquals([], $exception->getContext());
     }
 
     public function testExceptionWithPreviousException(): void
@@ -31,15 +36,15 @@ class StopWorkerExceptionTest extends TestCase
         $context = ['error' => 'connection_error'];
         $exception = new StopWorkerException('Worker exception', 0, $previousException, $context);
 
-        $this->assertEquals('Worker exception', $exception->getMessage());
-        $this->assertSame($previousException, $exception->getPrevious());
-        $this->assertEquals($context, $exception->getContext());
+        self::assertEquals('Worker exception', $exception->getMessage());
+        self::assertSame($previousException, $exception->getPrevious());
+        self::assertEquals($context, $exception->getContext());
     }
 
     public function testExceptionUsesContextAwareTrait(): void
     {
         $usedTraits = class_uses(StopWorkerException::class);
-        $this->assertArrayHasKey(ContextAwareTrait::class, $usedTraits);
+        self::assertArrayHasKey(ContextAwareTrait::class, $usedTraits);
     }
 
     public function testExceptionWithCustomCode(): void
@@ -47,6 +52,6 @@ class StopWorkerExceptionTest extends TestCase
         $code = 1001;
         $exception = new StopWorkerException('Custom code exception', $code);
 
-        $this->assertEquals($code, $exception->getCode());
+        self::assertEquals($code, $exception->getCode());
     }
 }

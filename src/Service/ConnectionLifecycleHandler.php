@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tourze\Symfony\AopPoolBundle\Service;
 
 use Tourze\Symfony\AopPoolBundle\Exception\ConnectionExpiredException;
@@ -19,6 +21,8 @@ class ConnectionLifecycleHandler
 
     /**
      * 连接开始时间记录
+     *
+     * @var array<string, int>
      */
     private array $connectionStartTimes = [];
 
@@ -29,6 +33,8 @@ class ConnectionLifecycleHandler
 
     /**
      * 记录连接创建时间
+     *
+     * @param Connection<mixed> $connection
      */
     public function registerConnection(Connection $connection): void
     {
@@ -42,6 +48,8 @@ class ConnectionLifecycleHandler
     /**
      * 检查连接是否健康/过期
      *
+     * @param Connection<mixed> $connection
+     *
      * @throws ConnectionExpiredException|ConnectionUnhealthyException 当连接过期或不健康时抛出
      */
     public function checkConnection(Connection $connection): void
@@ -51,8 +59,9 @@ class ConnectionLifecycleHandler
         $startTime = $this->connectionStartTimes[$id] ?? null;
 
         // 如果没有记录创建时间，先记录一下
-        if (!$startTime) {
+        if (null === $startTime) {
             $this->connectionStartTimes[$id] = time();
+
             return;
         }
 
@@ -82,7 +91,7 @@ class ConnectionLifecycleHandler
                 // 清理可能的错误状态
                 $redis->clearLastError();
             } catch (\Throwable $e) {
-                throw new ConnectionUnhealthyException("Redis连接不健康: " . $e->getMessage());
+                throw new ConnectionUnhealthyException('Redis连接不健康: ' . $e->getMessage());
             }
         }
     }
@@ -98,13 +107,15 @@ class ConnectionLifecycleHandler
                 // 简单ping检查，不同DBAL版本可能API不同，尝试最通用的方式
                 $connection->executeQuery('SELECT 1')->fetchOne();
             } catch (\Throwable $e) {
-                throw new ConnectionUnhealthyException("数据库连接不健康: " . $e->getMessage());
+                throw new ConnectionUnhealthyException('数据库连接不健康: ' . $e->getMessage());
             }
         }
     }
 
     /**
      * 注销连接记录
+     *
+     * @param Connection<mixed> $connection
      */
     public function unregisterConnection(Connection $connection): void
     {
@@ -122,13 +133,15 @@ class ConnectionLifecycleHandler
 
     /**
      * 获取连接年龄(秒)
+     *
+     * @param Connection<mixed> $connection
      */
     public function getConnectionAge(Connection $connection): ?int
     {
         $id = $this->getConnectionId($connection);
         $startTime = $this->connectionStartTimes[$id] ?? null;
 
-        if (!$startTime) {
+        if (null === $startTime) {
             return null;
         }
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tourze\Symfony\AopPoolBundle\EventSubscriber;
 
 use Monolog\Attribute\WithMonologChannel;

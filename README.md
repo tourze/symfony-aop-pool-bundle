@@ -3,7 +3,10 @@
 [English](README.md) | [中文](README.zh-CN.md)
 
 [![Latest Version](https://img.shields.io/packagist/v/tourze/symfony-aop-pool-bundle.svg?style=flat-square)](https://packagist.org/packages/tourze/symfony-aop-pool-bundle)
+[![Total Downloads](https://img.shields.io/packagist/dt/tourze/symfony-aop-pool-bundle.svg?style=flat-square)](https://packagist.org/packages/tourze/symfony-aop-pool-bundle)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![PHP Version](https://img.shields.io/badge/PHP-8.1%2B-blue.svg?style=flat-square)](https://packagist.org/packages/tourze/symfony-aop-pool-bundle)
+[![Code Coverage](https://img.shields.io/codecov/c/github/tourze/php-monorepo/master.svg?style=flat-square)](https://codecov.io/github/tourze/php-monorepo)
 
 AopPoolBundle is a Symfony bundle for automatic connection pooling using AOP (Aspect-Oriented Programming). It provides efficient resource pooling for Redis, database, and custom services, improving performance and resource utilization.
 
@@ -20,7 +23,6 @@ AopPoolBundle is a Symfony bundle for automatic connection pooling using AOP (As
 ## Installation
 
 - Requires PHP 8.1+, Symfony 6.4+
-- Dependencies: `doctrine/dbal`, `snc/redis-bundle`, etc.
 
 ```bash
 composer require tourze/symfony-aop-pool-bundle
@@ -107,7 +109,9 @@ DEBUG_ConnectionPoolAspect=true
 - Reconnect attempts and intervals are configurable
 - Works well in both short-lived (FPM) and long-lived (Workerman) process environments
 
-## Contribution
+## Contributing
+
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 - Please use Issues for bug reports and feature requests
 - Pull Requests are welcome; ensure tests and code style pass

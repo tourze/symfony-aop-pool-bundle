@@ -3,7 +3,10 @@
 [English](README.md) | [中文](README.zh-CN.md)
 
 [![Latest Version](https://img.shields.io/packagist/v/tourze/symfony-aop-pool-bundle.svg?style=flat-square)](https://packagist.org/packages/tourze/symfony-aop-pool-bundle)
+[![Total Downloads](https://img.shields.io/packagist/dt/tourze/symfony-aop-pool-bundle.svg?style=flat-square)](https://packagist.org/packages/tourze/symfony-aop-pool-bundle)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![PHP Version](https://img.shields.io/badge/PHP-8.1%2B-blue.svg?style=flat-square)](https://packagist.org/packages/tourze/symfony-aop-pool-bundle)
+[![Code Coverage](https://img.shields.io/codecov/c/github/tourze/php-monorepo/master.svg?style=flat-square)](https://codecov.io/github/tourze/php-monorepo)
 
 AopPoolBundle 是一个基于 Symfony 的 AOP 连接池扩展，旨在为 Redis、数据库等资源提供高效的池化管理。通过 AOP 技术自动拦截并池化服务，提升系统性能和资源利用率。
 
@@ -20,7 +23,6 @@ AopPoolBundle 是一个基于 Symfony 的 AOP 连接池扩展，旨在为 Redis�
 ## 安装方法
 
 - 依赖 PHP 8.1 及以上，Symfony 6.4 及以上
-- 需安装 `doctrine/dbal`、`snc/redis-bundle` 等依赖
 
 ```bash
 composer require tourze/symfony-aop-pool-bundle
@@ -108,6 +110,8 @@ DEBUG_ConnectionPoolAspect=true
 - 在短生命周期(FPM)和长生命周期(Workerman)进程环境下都能良好工作
 
 ## 贡献指南
+
+详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 - 通过 Issue 反馈问题
 - 提交 PR 前请确保通过测试与代码规范

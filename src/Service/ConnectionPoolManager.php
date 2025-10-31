@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tourze\Symfony\AopPoolBundle\Service;
 
 use Monolog\Attribute\WithMonologChannel;
@@ -8,8 +10,8 @@ use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Contracts\Service\ResetInterface;
 use Tourze\BacktraceHelper\ExceptionPrinter;
 use Tourze\Symfony\Aop\Model\JoinPoint;
-use Tourze\Symfony\AopPoolBundle\Exception\PoolNotFoundException;
 use Tourze\Symfony\Aop\Service\InstanceService;
+use Tourze\Symfony\AopPoolBundle\Exception\PoolNotFoundException;
 use Utopia\Pools\Connection;
 use Utopia\Pools\Pool;
 
@@ -22,12 +24,12 @@ use Utopia\Pools\Pool;
 class ConnectionPoolManager implements ResetInterface
 {
     /**
-     * @var array|Pool[]
+     * @var array<string, Pool<mixed>>
      */
     private array $pools = [];
 
     /**
-     * @var array 记录每个连接池的统计信息
+     * @var array<string, array{borrowed: int, available: int, total: int, created: int, destroyed: int, lastUpdated?: int}> 记录每个连接池的统计信息
      */
     private array $poolStats = [];
 
@@ -39,6 +41,8 @@ class ConnectionPoolManager implements ResetInterface
 
     /**
      * 获取或创建连接池
+     *
+     * @return Pool<mixed>
      */
     public function getPool(string $serviceId, JoinPoint $joinPoint): Pool
     {
@@ -69,6 +73,10 @@ class ConnectionPoolManager implements ResetInterface
 
     /**
      * 从池中获取连接
+     *
+     * @param Pool<mixed> $pool
+     *
+     * @return Connection<mixed>
      */
     public function borrowConnection(string $serviceId, Pool $pool): Connection
     {
@@ -83,6 +91,9 @@ class ConnectionPoolManager implements ResetInterface
 
     /**
      * 归还连接到池
+     *
+     * @param Pool<mixed>       $pool
+     * @param Connection<mixed> $connection
      */
     public function returnConnection(string $serviceId, Pool $pool, Connection $connection): void
     {
@@ -95,6 +106,9 @@ class ConnectionPoolManager implements ResetInterface
 
     /**
      * 销毁连接
+     *
+     * @param Pool<mixed>       $pool
+     * @param Connection<mixed> $connection
      */
     public function destroyConnection(string $serviceId, Pool $pool, Connection $connection): void
     {
@@ -110,6 +124,8 @@ class ConnectionPoolManager implements ResetInterface
 
     /**
      * 关闭资源连接
+     *
+     * @param Connection<mixed> $connection
      */
     private function closeResource(Connection $connection): void
     {
@@ -159,6 +175,8 @@ class ConnectionPoolManager implements ResetInterface
 
     /**
      * 清理特定池中的过期或无效连接
+     *
+     * @param Pool<mixed> $pool
      */
     private function cleanupPool(Pool $pool, string $serviceId): void
     {
@@ -183,6 +201,8 @@ class ConnectionPoolManager implements ResetInterface
     /**
      * 执行连接健康检查
      * 随机销毁部分连接以刷新池
+     *
+     * @param Pool<mixed> $pool
      */
     private function performConnectionHealthCheck(Pool $pool, string $serviceId): void
     {
@@ -197,7 +217,7 @@ class ConnectionPoolManager implements ResetInterface
         // 随机销毁一小部分连接（约5%），避免资源长期占用
         $connectionsToDestroy = max(1, intval($availableCount * 0.05));
 
-        for ($i = 0; $i < $connectionsToDestroy; $i++) {
+        for ($i = 0; $i < $connectionsToDestroy; ++$i) {
             try {
                 // 获取连接
                 $connection = $pool->pop();
@@ -235,9 +255,10 @@ class ConnectionPoolManager implements ResetInterface
     private function initPoolStats(string $serviceId): void
     {
         $this->poolStats[$serviceId] = [
-            'created' => time(),
             'borrowed' => 0,  // 已借出的连接数
             'available' => $this->getPoolMaxSize(), // 可用连接数
+            'total' => $this->getPoolMaxSize(), // 总连接数
+            'created' => 0,
             'destroyed' => 0, // 已销毁的连接数
         ];
     }
@@ -251,10 +272,14 @@ class ConnectionPoolManager implements ResetInterface
             $this->initPoolStats($serviceId);
         }
 
-        if (isset($this->poolStats[$serviceId][$key])) {
-            $this->poolStats[$serviceId][$key] += $delta;
-        } else {
-            $this->poolStats[$serviceId][$key] = $delta;
+        // 确保键存在于已知的统计字段中
+        $allowedKeys = ['borrowed', 'available', 'total', 'created', 'destroyed'];
+        if (in_array($key, $allowedKeys, true)) {
+            if (array_key_exists($key, $this->poolStats[$serviceId])) {
+                $this->poolStats[$serviceId][$key] += $delta;
+            } else {
+                $this->poolStats[$serviceId][$key] = $delta;
+            }
         }
 
         // 记录最后更新时间
@@ -303,6 +328,8 @@ class ConnectionPoolManager implements ResetInterface
 
     /**
      * 获取池统计信息
+     *
+     * @return array<string, array{borrowed: int, available: int, total: int, created: int, destroyed: int}>
      */
     public function getPoolStats(): array
     {
@@ -312,6 +339,8 @@ class ConnectionPoolManager implements ResetInterface
     /**
      * 根据服务ID获取连接池
      * 如果连接池不存在，抛出异常
+     *
+     * @return Pool<mixed>
      *
      * @throws PoolNotFoundException 如果找不到指定的连接池
      */

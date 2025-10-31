@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tourze\Symfony\AopPoolBundle\Attribute;
 
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
@@ -7,7 +9,7 @@ use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 /**
  * 标记使用连接池
  */
-#[\Attribute(\Attribute::TARGET_CLASS)]
+#[\Attribute(flags: \Attribute::TARGET_CLASS)]
 class ConnectionPool extends AutoconfigureTag
 {
     public function __construct()

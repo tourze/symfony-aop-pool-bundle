@@ -10,3 +10,7 @@ services:
     resource: '../../EventSubscriber/'
   Tourze\Symfony\AopPoolBundle\Service\:
     resource: '../../Service/'
+
+  # 确保 InstanceService 可用
+  Tourze\Symfony\Aop\Service\InstanceService:
+    class: Tourze\Symfony\Aop\Service\InstanceService
