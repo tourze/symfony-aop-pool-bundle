@@ -20,7 +20,7 @@
     "tourze/backtrace-helper": "1.*",
     "tourze/bundle-dependency": "1.*",
     "tourze/php-pools": "0.0.*",
-    "tourze/symfony-aop-bundle": "~0.0.4",
+    "tourze/symfony-aop-bundle": "1.0.*",
     "tourze/symfony-dependency-service-loader": "1.*",
     "tourze/symfony-runtime-context-bundle": "1.0.*"
   },
