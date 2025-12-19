@@ -2,61 +2,39 @@
 
 namespace Tourze\Symfony\AopPoolBundle\Tests\Service;
 
-use Monolog\Logger;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use PHPUnit\Framework\MockObject\MockObject;
-use PHPUnit\Framework\TestCase;
+use Tourze\PHPUnitSymfonyKernelTest\AbstractIntegrationTestCase;
 use Tourze\Symfony\Aop\Model\JoinPoint;
-use Tourze\Symfony\Aop\Service\InstanceService;
 use Tourze\Symfony\AopPoolBundle\Service\ConnectionPoolManager;
 use Utopia\Pools\Connection;
 use Utopia\Pools\Pool;
 
 /**
  * @internal
- * @phpstan-ignore-next-line 测试用例 Tourze\Symfony\AopPoolBundle\Tests\Service\ConnectionPoolManagerTest 的测试目标 Tourze\Symfony\AopPoolBundle\Service\ConnectionPoolManager 是一个服务，因此不应直接继承自 PHPUnit\Framework\TestCase。
  */
 #[CoversClass(ConnectionPoolManager::class)]
-final class ConnectionPoolManagerTest extends TestCase
+#[RunTestsInSeparateProcesses]
+final class ConnectionPoolManagerTest extends AbstractIntegrationTestCase
 {
     private ConnectionPoolManager $poolManager;
-
-    /** @var InstanceService&MockObject */
-    private InstanceService $instanceService;
-
-    /** @var Logger&MockObject */
-    private Logger $logger;
 
     /** @var JoinPoint&MockObject */
     private JoinPoint $joinPoint;
 
-    protected function setUp(): void
+    protected function onSetUp(): void
     {
-        // 模拟 InstanceService
-        /*
-         * 必须使用具体类 InstanceService 而不是接口，因为：
-         * 1. InstanceService 是一个服务类，没有定义对应的接口
-         * 2. 我们需要模拟 create() 方法来测试 ConnectionPoolManager 的行为
-         * 3. 这是合理的，因为我们测试的是 ConnectionPoolManager 与 InstanceService 的交互
-         * 替代方案：可以为 InstanceService 创建一个接口，但这会增加不必要的复杂性
-         */
-        $this->instanceService = $this->createMock(InstanceService::class);
+        // 设置环境变量
+        $_ENV['SERVICE_POOL_DEFAULT_SIZE'] = '10';
+        $_ENV['SERVICE_POOL_RECONNECT_ATTEMPTS'] = '3';
+        $_ENV['SERVICE_POOL_RECONNECT_SLEEP'] = '2';
+        $_ENV['SERVICE_POOL_RETRY_ATTEMPTS'] = '5';
+        $_ENV['SERVICE_POOL_RETRY_SLEEP'] = '1';
 
-        // 模拟 Logger
-        /*
-         * 必须使用具体类 Logger 而不是 LoggerInterface，因为：
-         * 1. 虽然 Monolog 提供了 LoggerInterface，但在某些情况下具体类可能有额外的方法
-         * 2. 这是一个遗留问题，应该使用 Psr\Log\LoggerInterface 代替
-         * 更好的替代方案：应该改为 $this->createMock(\Psr\Log\LoggerInterface::class)
-         */
-        $this->logger = $this->createMock(Logger::class);
-
-        // 直接实例化 ConnectionPoolManager，传入模拟依赖
-        $this->poolManager = new ConnectionPoolManager(
-            $this->instanceService,
-            $this->logger,
-        );
+        // 从容器获取真实的服务实例
+        $this->poolManager = self::getService(ConnectionPoolManager::class);
 
         // 创建 JoinPoint 模拟对象
         /*
@@ -73,22 +51,11 @@ final class ConnectionPoolManagerTest extends TestCase
         // 模拟服务ID
         $serviceId = 'test.service';
 
-        // 设置环境变量
-        $_ENV['SERVICE_POOL_DEFAULT_SIZE'] = '10';
-        $_ENV['SERVICE_POOL_RECONNECT_ATTEMPTS'] = '3';
-        $_ENV['SERVICE_POOL_RECONNECT_SLEEP'] = '2';
-        $_ENV['SERVICE_POOL_RETRY_ATTEMPTS'] = '5';
-        $_ENV['SERVICE_POOL_RETRY_SLEEP'] = '1';
-
-        // 模拟 InstanceService 创建一个实例
-        $instance = new \stdClass();
-        $this->instanceService->method('create')
-            ->with($this->joinPoint)
-            ->willReturn($instance)
-        ;
-
         // 第一次获取池应该创建一个新的池
         $pool = $this->poolManager->getPool($serviceId, $this->joinPoint);
+
+        // 验证返回的是 Pool 实例
+        self::assertInstanceOf(Pool::class, $pool);
 
         // 第二次获取相同ID的池应该返回相同的池实例
         $pool2 = $this->poolManager->getPool($serviceId, $this->joinPoint);
@@ -308,11 +275,6 @@ final class ConnectionPoolManagerTest extends TestCase
         $reflection = new \ReflectionProperty(ConnectionPoolManager::class, 'pools');
         $reflection->setAccessible(true);
         $reflection->setValue($this->poolManager, ['test.service' => $pool]);
-
-        // 预期日志记录
-        $this->logger->method('info')
-            ->with(self::equalTo('清理连接池'), self::anything())
-        ;
 
         // 调用清理方法
         $this->poolManager->cleanup();

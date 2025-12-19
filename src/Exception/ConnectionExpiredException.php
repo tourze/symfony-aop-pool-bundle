@@ -9,7 +9,7 @@ use Tourze\BacktraceHelper\ContextAwareTrait;
 /**
  * 连接过期异常
  */
-class ConnectionExpiredException extends \Exception
+final class ConnectionExpiredException extends \Exception
 {
     use ContextAwareTrait;
 }

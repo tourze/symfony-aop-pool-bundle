@@ -10,7 +10,7 @@ use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
  * 标记使用连接池
  */
 #[\Attribute(flags: \Attribute::TARGET_CLASS)]
-class ConnectionPool extends AutoconfigureTag
+final class ConnectionPool extends AutoconfigureTag
 {
     public function __construct()
     {

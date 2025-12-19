@@ -12,7 +12,7 @@ use Utopia\Pools\Connection;
  * 连接生命周期处理器
  * 负责处理连接的创建、检查和销毁
  */
-class ConnectionLifecycleHandler
+final class ConnectionLifecycleHandler
 {
     /**
      * 连接生命周期(秒)

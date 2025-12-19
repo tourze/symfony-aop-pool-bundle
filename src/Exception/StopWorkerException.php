@@ -11,7 +11,7 @@ use Tourze\BacktraceHelper\ContextAwareTrait;
  *
  * @see https://www.workerman.net/doc/workerman/faq/max-requests.html
  */
-class StopWorkerException extends \Exception
+final class StopWorkerException extends \Exception
 {
     use ContextAwareTrait;
 }

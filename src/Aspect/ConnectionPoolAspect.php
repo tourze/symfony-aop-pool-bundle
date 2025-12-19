@@ -24,7 +24,7 @@ use Utopia\Pools\Connection;
  */
 #[Aspect]
 #[WithMonologChannel(channel: 'connection_pool')]
-class ConnectionPoolAspect implements ResetInterface
+final class ConnectionPoolAspect implements ResetInterface
 {
     /**
      * @var array<string, array<string, Connection<mixed>>> 按上下文和服务ID跟踪借出的连接

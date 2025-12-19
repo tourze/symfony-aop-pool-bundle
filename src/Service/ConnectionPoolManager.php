@@ -21,7 +21,7 @@ use Utopia\Pools\Pool;
  */
 #[Autoconfigure(public: true)]
 #[WithMonologChannel(channel: 'connection_pool')]
-class ConnectionPoolManager implements ResetInterface
+final class ConnectionPoolManager implements ResetInterface
 {
     /**
      * @var array<string, Pool<mixed>>

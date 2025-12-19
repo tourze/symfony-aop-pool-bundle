@@ -20,7 +20,7 @@ use Tourze\Symfony\AopPoolBundle\Service\ConnectionPoolManager;
  * 定期执行连接池清理以回收资源
  */
 #[WithMonologChannel(channel: 'connection_pool')]
-class PoolCleanupScheduler
+final class PoolCleanupScheduler
 {
     /**
      * 上次运行时间

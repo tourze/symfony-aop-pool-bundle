@@ -6,7 +6,7 @@ namespace Tourze\Symfony\AopPoolBundle\DependencyInjection;
 
 use Tourze\SymfonyDependencyServiceLoader\AutoExtension;
 
-class AopPoolExtension extends AutoExtension
+final class AopPoolExtension extends AutoExtension
 {
     protected function getConfigDir(): string
     {

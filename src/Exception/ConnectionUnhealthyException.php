@@ -9,7 +9,7 @@ use Tourze\BacktraceHelper\ContextAwareTrait;
 /**
  * 连接不健康异常
  */
-class ConnectionUnhealthyException extends \Exception
+final class ConnectionUnhealthyException extends \Exception
 {
     use ContextAwareTrait;
 }
